@@ -1,7 +1,10 @@
 const teardown = async (page, browser) => {
-    await page.close();
-    await browser.close();
+    if (page && !page.isClosed()) {
+      await page.close();
+    }
+    if (browser) {
+      await browser.close();
+    }
   };
   
   module.exports = { teardown };
-  
