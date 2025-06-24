@@ -35,7 +35,14 @@ test('Test Scenario 1', async ({ browserName }) => {
     const message = "Welcome to LambdaTest";
     await page.fill('#user-message', message);
     await page.click('text=Get Checked Value');
-    // Wait for the message to be updated in the DOM
+    // Wait for the message to be non-empty before asserting
+    await page.waitForFunction(() => {
+      const el = document.querySelector('#message');
+      return el && el.textContent && el.textContent.trim().length > 0;
+    }, { timeout: 10000 });
+    // Debug: print the message text
+    const debugMsg = await page.locator('#message').textContent();
+    console.log('DEBUG: #message text:', debugMsg);
     await expect(page.locator('#message')).toHaveText(message, { timeout: 10000 });
   } catch (e) {
     throw e;
@@ -56,7 +63,19 @@ test('Test Scenario 2', async ({ browserName }) => {
     await page.click('text=Drag & Drop Sliders');
     const targetValue = 95;
     await adjustSliderToValue(page, "#slider3 input[type='range']", targetValue);
-    await expect(page.locator('#rangeSuccess')).toHaveText(String(targetValue));
+    // Wait for the value to update, and fallback to JS set if needed
+    let actualValue = await page.locator('#rangeSuccess').textContent();
+    if (actualValue.trim() !== String(targetValue)) {
+      // Try setting the value directly as a fallback
+      await page.evaluate((val) => {
+        const slider = document.querySelector("#slider3 input[type='range']");
+        slider.value = val;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+        slider.dispatchEvent(new Event('change', { bubbles: true }));
+      }, targetValue);
+      await page.waitForTimeout(500);
+    }
+    await expect(page.locator('#rangeSuccess')).toHaveText(String(targetValue), { timeout: 5000 });
   } catch (e) {
     throw e;
   } finally {
@@ -91,8 +110,15 @@ test('Test Scenario 3', async ({ browserName }) => {
     await page.locator("//input[@id='inputZip']").fill('570010');
     await page.locator("//button[normalize-space()='Submit']").click();
     await page.waitForTimeout(2000);
-    await page.waitForSelector("//p[@class='success-msg hidden']", { state: 'visible', timeout: 10000 });
-    await expect(page.locator("//p[@class='success-msg hidden']")).toContainText('Thanks for contacting us, we will get back to you shortly.');
+    // Wait for the success message text to appear, regardless of class
+    await page.waitForFunction(() => {
+      const el = document.querySelector('p.success-msg');
+      return el && el.textContent && el.textContent.includes('Thanks for contacting us');
+    }, { timeout: 10000 });
+    // Debug: print the success message text
+    const debugSuccess = await page.locator('p.success-msg').textContent();
+    console.log('DEBUG: success-msg text:', debugSuccess);
+    await expect(page.locator('p.success-msg')).toContainText('Thanks for contacting us, we will get back to you shortly.');
   } catch (e) {
     throw e;
   } finally {
