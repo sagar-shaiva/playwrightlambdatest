@@ -35,7 +35,8 @@ test('Test Scenario 1', async ({ browserName }) => {
     const message = "Welcome to LambdaTest";
     await page.fill('#user-message', message);
     await page.click('text=Get Checked Value');
-    await expect(page.locator("//p[@id='message']")).toHaveText(message);
+    // Wait for the message to be updated in the DOM
+    await expect(page.locator('#message')).toHaveText(message, { timeout: 10000 });
   } catch (e) {
     throw e;
   } finally {
